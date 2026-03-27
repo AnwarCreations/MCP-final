@@ -1,62 +1,64 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { exec } from "child_process";
-import { promisify } from "util";
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
 import Groq from "groq-sdk";
-import { z } from "zod";
+import { MCPServer } from "@modelcontextprotocol/sdk";
 
-const execAsync = promisify(exec);
+dotenv.config();
 
-// ── GROQ CLIENT ─────────────────────────────────────────
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// GROQ client
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
+// MCP Server Init
+const mcpServer = new MCPServer({
+  name: "Anwar MCP Server v2.0",
+  version: "1.0.0",
 });
 
-const MODEL = "llama3-70b-8192";
+// Example tool
+mcpServer.tool("chat", {
+  description: "Chat with Groq Llama 3",
+  properties: {
+    message: {
+      type: "string",
+      description: "User message",
+    },
+  },
+  required: ["message"],
+}, async ({ message }) => {
+  const completion = await groq.chat.completions.create({
+    model: "llama3-70b-8192",
+    messages: [{ role: "user", content: message }],
+  });
 
-// ── MCP SERVER ───────────────────────────────────────────
-const server = new McpServer({
-  name: "Anwar-MCP-Server",
-  version: "2.0.0",
+  return {
+    reply: completion.choices[0].message.content,
+  };
 });
 
-// ── TOOL: run_command ─────────────────────────────────────
-server.tool(
-  "run_command",
-  "Run any shell command",
-  { command: z.string() },
-  async ({ command }) => {
-    try {
-      const { stdout, stderr } = await execAsync(command);
-      return { content: [{ type: "text", text: stdout || stderr }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: e.message }], isError: true };
-    }
+// MCP HTTP endpoint
+app.post("/mcp", async (req, res) => {
+  const { tool, args } = req.body;
+  try {
+    const result = await mcpServer.call(tool, args);
+    res.json(result);
+  } catch (err) {
+    console.error("MCP Error:", err);
+    res.status(500).json({ error: "Tool execution failed" });
   }
-);
+});
 
-// ── TOOL: ask_ai ──────────────────────────────────────────
-server.tool(
-  "ask_ai",
-  "Ask Groq AI",
-  { prompt: z.string() },
-  async ({ prompt }) => {
-    try {
-      const res = await groq.chat.completions.create({
-        model: MODEL,
-        messages: [
-          { role: "system", content: "You are a Kali Linux expert." },
-          { role: "user", content: prompt }
-        ],
-      });
-      return { content: [{ type: "text", text: res.choices[0].message.content }] };
-    } catch (e) {
-      return { content: [{ type: "text", text: e.message }], isError: true };
-    }
-  }
-);
+app.get("/", (req, res) => {
+  res.send("Anwar MCP Server is running 🚀🔥");
+});
 
-// ── START SERVER ──────────────────────────────────────────
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("✅ Anwar MCP Server v2.0 running with Groq Llama 3...");
+// Render requires this PORT
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on PORT ${PORT}`);
+});

@@ -9,11 +9,9 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
     "groq-sdk": "latest",
-    "zod": "latest"
-  },
-  "description": "",
-  "devDependencies": {},
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+    "zod": "latest",
+    "express": "latest",
+    "cors": "latest",
+    "dotenv": "latest"
+  }
 }
