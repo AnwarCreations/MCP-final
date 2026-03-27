@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "anwar-mcp-server": {
+      "command": "wsl",
+      "args": [
+        "-d", "kali-linux",
+        "--",
+        "node",
+        "/home/YOUR_KALI_USERNAME/anwargit/server.js"
+      ],
+      "env": {
+        "GROQ_API_KEY": "YOUR_GROQ_API_KEY_HERE"
+      }
+    }
+  }
+}
